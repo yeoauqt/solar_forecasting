@@ -14,7 +14,7 @@ st.set_page_config(
     page_icon="☀️"
 )
 
-# แต่งหน้าตาตัวหนังสือและธีม Dashboard ให้ดูสวยหรู มีระเบียบ
+# แต่งหน้าตาตัวหนังสือและธีม Dashboard ให้ดูสวยหรู มีระเบียบ ด้วย CSS 
 st.markdown("""
     <style>
     .main-title { font-size: 36px; font-weight: 800; color: #1E3A8A; margin-bottom: 5px; }
@@ -67,12 +67,4 @@ def predict_solar_irradiance(scaler):
     base_values = np.array([4.8, 5.2, 5.5, 5.8, 5.1, 4.3, 4.1, 4.4, 4.6, 4.9, 5.0, 4.7])
     if scaler is not None:
         try:
-            scaled = scaler.transform(base_values.reshape(-1, 1)).flatten()
-            real_pred = scaler.inverse_transform(scaled.reshape(-1, 1)).flatten()
-            return real_pred
-        except:
-            return base_values
-    return base_values
-
-# ─── SIDEBAR & INPUTS ──────────────────────────────────────────────────────
-st.sidebar.image("
+            scaled = scaler.transform(base_values.reshape(-1,
