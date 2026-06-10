@@ -14,14 +14,14 @@ st.set_page_config(
     page_icon="☀️"
 )
 
-# แต่งหน้าตาตัวหนังสือและธีม Dashboard ให้ดูสวยหรู มีระเบียบ ด้วย CSS 
+# แต่งหน้าตาตัวหนังสือและธีม Dashboard ให้ดูสวยหรู ด้วย CSS (แก้ไขตัวแปรเป็น unsafe_allow_html แล้วครับ)
 st.markdown("""
     <style>
     .main-title { font-size: 36px; font-weight: 800; color: #1E3A8A; margin-bottom: 5px; }
     .sub-title { font-size: 16px; color: #4B5563; margin-bottom: 30px; }
     .section-header { font-size: 22px; font-weight: 700; color: #1E3A8A; border-bottom: 2px solid #E5E7EB; padding-bottom: 8px; margin-top: 25px; margin-bottom: 15px; }
     </style>
-""", unsafe_html=True)
+""", unsafe_allow_html=True)
 
 # สร้างระบบสมุดบันทึก (Session State) ป้องกันข้อมูลและผลลัพธ์หายเวลาขยับหน้าจอ
 if 'analyzed' not in st.session_state:
@@ -67,7 +67,6 @@ def predict_solar_irradiance(scaler):
     base_values = np.array([4.8, 5.2, 5.5, 5.8, 5.1, 4.3, 4.1, 4.4, 4.6, 4.9, 5.0, 4.7])
     if scaler is not None:
         try:
-            # แก้ไขจุดวงเล็บตกหล่นเรียบร้อยตรงบรรทัดนี้ครับ
             scaled = scaler.transform(base_values.reshape(-1, 1)).flatten()
             real_pred = scaler.inverse_transform(scaled.reshape(-1, 1)).flatten()
             return real_pred
@@ -85,27 +84,4 @@ lng_input = st.sidebar.number_input("📍 Longitude (ลองจิจูด)",
 st.sidebar.markdown("---")
 if st.sidebar.button("🚀 เริ่มวิเคราะห์ระบบโซลาร์", type="primary", use_container_width=True):
     st.session_state.analyzed = True
-    st.session_state.saved_lat = lat_input
-    st.session_state.saved_lng = lng_input
-
-if st.sidebar.button("🔄 ล้างข้อมูลหน้าจอ", use_container_width=True):
-    st.session_state.analyzed = False
-    st.rerun()
-
-# ─── MAIN DASHBOARD ────────────────────────────────────────────────────────
-st.markdown('<div class="main-title">☀️ Industrial Solar Rooftop Scout Dashboard</div>', unsafe_html=True)
-st.markdown('<div class="sub-title">🔮 ระบบ AI อัจฉริยะวิเคราะห์พื้นที่หลังคาโรงงานอุตสาหกรรม และพยากรณ์ค่ารังสีแสงอาทิตย์ล่วงหน้าเพื่อประเมินความคุ้มค่า</div>', unsafe_html=True)
-
-if scaler_err:
-    st.caption(scaler_err)
-
-# จัดลำดับ: ถ้าระบบโดนกดปุ่มวิเคราะห์ ให้ทำการคำนวณเบื้องหลังให้เสร็จสิ้น 100% ก่อนก้าวไปจัดหน้าจอ
-if st.session_state.analyzed:
-    
-    sat_img = get_satellite_image(st.session_state.saved_lat, st.session_state.saved_lng)
-    roof_mask, roof_area = predict_roof_area(sat_img)
-    forecast_values = predict_solar_irradiance(scaler)
-    
-    potential_kwp = roof_area / 10.0
-    avg_irradiance = np.mean(forecast_values)
-    annual
+    st.session_state.saved_lat = lat
