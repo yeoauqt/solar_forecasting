@@ -14,7 +14,7 @@ st.set_page_config(
     page_icon="☀️"
 )
 
-# แต่งหน้าตาตัวหนังสือและธีม Dashboard ให้ดูสวยหรู ด้วย CSS (แก้ไขตัวแปรเป็น unsafe_allow_html แล้วครับ)
+# แต่งหน้าตาตัวหนังสือและธีม Dashboard ให้ดูสวยหรู มีระเบียบ ด้วย CSS 
 st.markdown("""
     <style>
     .main-title { font-size: 36px; font-weight: 800; color: #1E3A8A; margin-bottom: 5px; }
@@ -35,6 +35,47 @@ if 'saved_lng' not in st.session_state:
 @st.cache_resource
 def load_scaler():
     scaler_path = 'scaler.pkl'
+    if os.path.exists(scaler_path):
+        try:
+            with open(scaler_path, 'rb') as f:
+                return pickle.load(f), None
+        except Exception as e:
+            return None, f"❌ โหลด Scaler ไม่สำเร็จ: {str(e)}"
+    return None, "⚠️ ไม่พบไฟล์ 'scaler.pkl' (ระบบเปิดโหมดจำลองอัตโนมัติ)"
+
+with st.spinner("🔄 กำลังเตรียมความพร้อมระบบ..."):
+    scaler, scaler_err = load_scaler()
+
+# ─── HELPER FUNCTIONS ──────────────────────────────────────────────────────
+def get_satellite_image(lat, lng):
+    # วาดโครงภาพหลังคาโรงงานจำลองให้ดูเนียนและสะอาดตา
+    mock_img = np.zeros((256, 256, 3), dtype=np.uint8)
+    mock_img[50:200, 40:210, :] = [140, 145, 150] 
+    return mock_img
+
+def predict_roof_area(image):
+    # จำลองการตัด Mask ของพื้นที่หลังคาโรงงาน
+    binary_mask = np.zeros((256, 256, 1), dtype=np.uint8)
+    binary_mask[50:200, 40:210, 0] = 1
+    pixel_resolution = 0.25 
+    roof_pixels = np.sum(binary_mask)
+    calculated_area = roof_pixels * pixel_resolution
+    return binary_mask, calculated_area
+
+def predict_solar_irradiance(scaler):
+    # ค่ารังสีมาตรฐานรายเดือน (ม.ค. - ธ.ค.)
+    base_values = np.array([4.8, 5.2, 5.5, 5.8, 5.1, 4.3, 4.1, 4.4, 4.6, 4.9, 5.0, 4.7])
+    if scaler is not None:
+        try:
+            scaled = scaler.transform(base_values.reshape(-1, 1)).flatten()
+            real_pred = scaler.inverse_transform(scaled.reshape(-1, 1)).flatten()
+            return real_pred
+        except:
+            return base_values
+    return base_values
+
+# ─── SIDEBAR & INPUTS ──────────────────────────────────────────────────────
+st.sidebar.title("☀️    scaler_path = 'scaler.pkl'
     if os.path.exists(scaler_path):
         try:
             with open(scaler_path, 'rb') as f:
