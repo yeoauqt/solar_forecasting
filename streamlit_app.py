@@ -1,13 +1,78 @@
-# 📊 SECTION 1: สรุปตัวเลขสำคัญ (Key Metrics) แบบตารางสี่เหลี่ยมสวยๆ ด้านบน
-    st.markdown('<div class="section-header">📊 สรุปภาพรวมการประเมินศักยภาพ (Dashboard Summary)</div>', unsafe_html=True)
-    
-    m_col1, m_col2, m_col3 = st.columns(3)
-    with m_col1:
-        metric_box1 = st.container(border=True) # <-- เปลี่ยนชื่อตัวแปรตรงนี้
-        metric_box1.metric(label="📐 พื้นที่หลังคาโรงงานทั้งหมด", value=f"{roof_area:,.2f} ตร.ม.", delta="ตรวจพบโดย U-Net")
-    with m_col2:
-        metric_box2 = st.container(border=True) # <-- เปลี่ยนชื่อตัวแปรตรงนี้
-        metric_box2.metric(label="🔌 ขนาดกำลังผลิตที่ติดตั้งได้", value=f"{potential_kwp:,.2f} kWp", delta="คำนวณจากพื้นที่จริง")
-    with m_col3:
-        metric_box3 = st.container(border=True) # <-- เปลี่ยนชื่อตัวแปรตรงนี้
-        metric_box3.metric(label="🔋 คาดการณ์พลังงานที่ผลิตได้ต่อปี", value=f"{annual_energy:,.2f} kWh/ปี", delta="ความคุ้มค่าเกรดสูง")
+import streamlit as st
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import pickle
+import os
+import folium
+from streamlit_folium import st_folium
+
+# ─── CONFIG & SETUP ────────────────────────────────────────────────────────
+st.set_page_config(
+    page_title="Industrial Solar Rooftop Scout", 
+    layout="wide", 
+    page_icon="☀️"
+)
+
+# แต่งหน้าตาตัวหนังสือและธีม Dashboard ให้ดูสวยหรู มีระเบียบ
+st.markdown("""
+    <style>
+    .main-title { font-size: 36px; font-weight: 800; color: #1E3A8A; margin-bottom: 5px; }
+    .sub-title { font-size: 16px; color: #4B5563; margin-bottom: 30px; }
+    .section-header { font-size: 22px; font-weight: 700; color: #1E3A8A; border-bottom: 2px solid #E5E7EB; padding-bottom: 8px; margin-top: 25px; margin-bottom: 15px; }
+    </style>
+""", unsafe_html=True)
+
+# สร้างระบบสมุดบันทึก (Session State) ป้องกันข้อมูลและผลลัพธ์หายเวลาขยับหน้าจอ
+if 'analyzed' not in st.session_state:
+    st.session_state.analyzed = False
+if 'saved_lat' not in st.session_state:
+    st.session_state.saved_lat = 18.7883
+if 'saved_lng' not in st.session_state:
+    st.session_state.saved_lng = 98.9853
+
+# ฟังก์ชันโหลดไฟล์ Scaler แบบปลอดภัยสูง
+@st.cache_resource
+def load_scaler():
+    scaler_path = 'scaler.pkl'
+    if os.path.exists(scaler_path):
+        try:
+            with open(scaler_path, 'rb') as f:
+                return pickle.load(f), None
+        except Exception as e:
+            return None, f"❌ โหลด Scaler ไม่สำเร็จ: {str(e)}"
+    return None, "⚠️ ไม่พบไฟล์ 'scaler.pkl' (ระบบเปิดโหมดจำลองอัตโนมัติ)"
+
+with st.spinner("🔄 กำลังเตรียมความพร้อมระบบ..."):
+    scaler, scaler_err = load_scaler()
+
+# ─── HELPER FUNCTIONS ──────────────────────────────────────────────────────
+def get_satellite_image(lat, lng):
+    # วาดโครงภาพหลังคาโรงงานจำลองให้ดูเนียนและสะอาดตา
+    mock_img = np.zeros((256, 256, 3), dtype=np.uint8)
+    mock_img[50:200, 40:210, :] = [140, 145, 150] 
+    return mock_img
+
+def predict_roof_area(image):
+    # จำลองการตัด Mask ของพื้นที่หลังคาโรงงาน
+    binary_mask = np.zeros((256, 256, 1), dtype=np.uint8)
+    binary_mask[50:200, 40:210, 0] = 1
+    pixel_resolution = 0.25 
+    roof_pixels = np.sum(binary_mask)
+    calculated_area = roof_pixels * pixel_resolution
+    return binary_mask, calculated_area
+
+def predict_solar_irradiance(scaler):
+    # ค่ารังสีมาตรฐานรายเดือน (ม.ค. - ธ.ค.)
+    base_values = np.array([4.8, 5.2, 5.5, 5.8, 5.1, 4.3, 4.1, 4.4, 4.6, 4.9, 5.0, 4.7])
+    if scaler is not None:
+        try:
+            scaled = scaler.transform(base_values.reshape(-1, 1)).flatten()
+            real_pred = scaler.inverse_transform(scaled.reshape(-1, 1)).flatten()
+            return real_pred
+        except:
+            return base_values
+    return base_values
+
+# ─── SIDEBAR & INPUTS ──────────────────────────────────────────────────────
+st.sidebar.image("
